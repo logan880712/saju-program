@@ -9,7 +9,7 @@ const groups:{type:Relation['type'];pairs:string[];description:string}[]=[
 ];
 export function pairRelations(a:string,b:string,left:string,right:string):Relation[]{
  const out:Relation[]=[];
- for(const group of groups){const pair=group.type==='천간합'?a[0]+b[0]:a[1]+b[1];if(group.pairs.some(p=>p===pair||p===pair[1]+pair[0]))out.push({type:group.type,left,right,pair,description:group.description});}
+ for(const group of groups){const pair=group.type==='천간합'?a[0]+b[0]:a[1]+b[1];if(group.pairs.some(p=>p===pair||p===pair[1]+pair[0]))out.push({type:group.type,left,right,pair,description:group.type==='형'&&pair[0]===pair[1]?'같은 지지가 두 자리에 반복된 자형 관계입니다. 반복해서 점검하는 기준과 자기 요구를 살펴보는 전통 배속입니다.':group.type==='형'&&('子卯'.includes(pair[0])&&'子卯'.includes(pair[1]))?'자와 묘의 형 관계입니다. 서로 다른 기대와 표현 방식을 맞춰보는 전통 배속입니다.':group.description});}
  return out;
 }
 export function natalRelations(pillars:{ganji:string;label:string}[]):Relation[]{return pillars.flatMap((a,i)=>pillars.slice(i+1).flatMap(b=>pairRelations(a.ganji,b.ganji,a.label,b.label)));}

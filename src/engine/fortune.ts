@@ -1,3 +1,4 @@
+import {calculateNatalProfile} from './profile';
 import {Solar} from 'lunar-javascript';
 import type {SolarDate} from 'lunar-javascript';
 import type {SajuResult} from './types';
@@ -51,5 +52,13 @@ export function calculateFortune(natal:SajuResult,year:number,referenceDate=seou
   cycles={status:'calculated',direction:yun.isForward()?'순행':'역행',startAge:{years:yun.getStartYear(),months:yun.getStartMonth(),days:yun.getStartDay(),hours:yun.getStartHour()},startDate:periods[0].startDate,periods,note:'양남·음녀 순행 / 음남·양녀 역행. 인접 절까지의 차이를 3일=1년으로 환산하는 분 단위 기산법(sect 2)입니다. 시작일은 엔진 기산값을 서머타임을 제거한 역사적 한국 표준시로 표시한 값이며 학파별 기산법·반올림에 따라 달라질 수 있습니다. 나이는 대운 개시까지의 경과연수를 약식 표시합니다.'};
  }
  annual.forEach(a=>{const midpoint=`${a.year}-07-01 12:00:00`;const cycle=cycles.periods.find(p=>midpoint>=p.startDate&&midpoint<p.endDate);if(cycle)a.cycleRelations=pairRelations(cycle.ganji,a.ganji,`${a.year}년 7월 기준 대운`,`${a.year}년`);});
- return {referenceDate,referenceYear:year,cycles,annual,months,daily:{...luckPillar(dailyGanji,dayStem),date:referenceDate,relations:relations(dailyGanji,'일진')},natalRelations:natalRelations(natal.pillars),methods:['연운은 양력 1월 1일이 아닌 입춘부터 다음 입춘까지입니다.','월운은 12절의 실제 절입 시각으로 구분하며 음력 월·달력 월과 다릅니다.','일진은 선택 날짜의 한국 표준시 정오 기준입니다. 23시 이후는 다음 일진으로 봅니다.','합·충·형·파·해는 쌍별 배속을 표시합니다. 합화·삼합·삼형 완성 및 길흉의 강도는 판정하지 않습니다.','대운 시작 전 또는 10개 대운 범위 밖에는 현재 대운을 표시하지 않습니다.']};
+ return {profile:calculateNatalProfile(natal),referenceDate,referenceYear:year,cycles,annual,months,daily:{...luckPillar(dailyGanji,dayStem),date:referenceDate,relations:relations(dailyGanji,'일진')},natalRelations:natalRelations(natal.pillars),methods:['연운은 양력 1월 1일이 아닌 입춘부터 다음 입춘까지입니다.','월운은 12절의 실제 절입 시각으로 구분하며 음력 월·달력 월과 다릅니다.','일진은 선택 날짜의 한국 표준시 정오 기준입니다. 23시 이후는 다음 일진으로 봅니다.','합·충·형·파·해는 쌍별 배속을 표시합니다. 합화·삼합·삼형 완성 및 길흉의 강도는 판정하지 않습니다.','대운 시작 전 또는 10개 대운 범위 밖에는 현재 대운을 표시하지 않습니다.']};
+}
+/** Common calendar day only: no invented personal ten-gods without a birth chart. */
+export function calculateCalendarDay(date=seoulToday()){
+ if(!/^\d{4}-\d{2}-\d{2}$/.test(date))throw new Error('올바른 조회 날짜를 입력하세요.');
+ const [y,m,d]=date.split('-').map(Number),check=new Date(Date.UTC(y,m-1,d));
+ if(y<1950||y>2130||check.toISOString().slice(0,10)!==date)throw new Error('조회 날짜를 확인하세요.');
+ const chart=Solar.fromYmdHms(y,m,d,12,0,0).getLunar().getEightChar();chart.setSect(1);
+ const ganji=chart.getDay();return {date,ganji,stem:character(ganji[0]),branch:character(ganji[1]),timeBasis:'한국 날짜 정오 일진 · 23시부터 다음 일진'};
 }
