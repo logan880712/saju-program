@@ -1,0 +1,13 @@
+import {readFile,writeFile,mkdir} from 'node:fs/promises';
+import {resolve} from 'node:path';
+const root=resolve(import.meta.dirname,'..');
+let html=await readFile(resolve(root,'dist/index.html'),'utf8');
+const script=html.match(/<script\b[^>]*\bsrc="([^"]+)"[^>]*><\/script>/);
+const style=html.match(/<link\b[^>]*\bhref="([^"]+\.css)"[^>]*>/);
+if(!script||!style)throw new Error('Expected the complete single-bundle Vite output');
+const js=await readFile(resolve(root,'dist',script[1]),'utf8');
+const css=await readFile(resolve(root,'dist',style[1]),'utf8');
+html=html.replace(script[0],()=>`<script type="module">${js.replaceAll('</script','<\\/script')}</script>`).replace(style[0],()=>`<style>${css.replaceAll('</style','<\\/style')}</style>`);
+await mkdir(resolve(root,'downloads'),{recursive:true});
+await writeFile(resolve(root,'downloads/saju-program.html'),html);
+console.log('Created downloads/saju-program.html: opens offline with no installation.');
