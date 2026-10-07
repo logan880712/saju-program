@@ -93,3 +93,5 @@ npm run test:e2e
 이 저장소의 기본 Pages 주소는 `https://logan880712.github.io/saju-program/`입니다. **배포 성공 전에는 활성 주소로 간주하면 안 됩니다.** Pages URL은 온보딩 클라우드 프로세스와 독립적이며 컴퓨터나 모바일 브라우저에서 사용할 수 있습니다. 원국 입력은 브라우저에서 계산하므로 API 키나 서버가 필요 없습니다.
 
 저장소에는 배포용 생성 파일 `standalone/saju-program.html`도 포함되어 있습니다. GitHub에서 이 파일을 다운로드한 뒤 개인 PC에서 더블클릭하세요. 이후 코드 수정 시 `npm run build:offline`을 실행하면 내려받기용 파일과 저장소의 배포용 파일이 함께 갱신됩니다.
+
+배포 진입 파일은 저장소 루트 `index.html`(생성된 단일 파일)입니다. GitHub Pages를 main 브랜치 루트로 게시해도 동작합니다. 개발용 원본 진입 파일은 `app.html`이며 Vite 개발 서버는 `/`를 이 파일로 연결합니다. `npm run build:offline`은 루트 배포 파일과 standalone 파일을 함께 갱신합니다.
