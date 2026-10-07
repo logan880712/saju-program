@@ -91,3 +91,5 @@ npm run test:e2e
 `.github/workflows/pages.yml`은 main 변경마다 계산 테스트와 빌드를 거쳐 GitHub Pages에 자동 배포합니다. 저장소의 **Settings → Pages → Build and deployment → Source → GitHub Actions**를 선택해야 합니다. 계정·저장소 요금제에 따라 Pages 사용 가능 여부가 다를 수 있습니다. Actions의 `만세력 웹사이트 배포`가 성공하면 Pages 설정 화면의 Visit site에서 실제 주소를 확인하세요. main에 수정사항을 올리면 같은 주소가 자동 갱신됩니다.
 
 이 저장소의 기본 Pages 주소는 `https://logan880712.github.io/saju-program/`입니다. **배포 성공 전에는 활성 주소로 간주하면 안 됩니다.** Pages URL은 온보딩 클라우드 프로세스와 독립적이며 컴퓨터나 모바일 브라우저에서 사용할 수 있습니다. 원국 입력은 브라우저에서 계산하므로 API 키나 서버가 필요 없습니다.
+
+저장소에는 배포용 생성 파일 `standalone/saju-program.html`도 포함되어 있습니다. GitHub에서 이 파일을 다운로드한 뒤 개인 PC에서 더블클릭하세요. 이후 코드 수정 시 `npm run build:offline`을 실행하면 내려받기용 파일과 저장소의 배포용 파일이 함께 갱신됩니다.

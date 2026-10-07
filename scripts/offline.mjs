@@ -10,4 +10,6 @@ const css=await readFile(resolve(root,'dist',style[1]),'utf8');
 html=html.replace(script[0],()=>`<script type="module">${js.replaceAll('</script','<\\/script')}</script>`).replace(style[0],()=>`<style>${css.replaceAll('</style','<\\/style')}</style>`);
 await mkdir(resolve(root,'downloads'),{recursive:true});
 await writeFile(resolve(root,'downloads/saju-program.html'),html);
+await mkdir(resolve(root,'standalone'),{recursive:true});
+await writeFile(resolve(root,'standalone/saju-program.html'),html);
 console.log('Created downloads/saju-program.html: opens offline with no installation.');
