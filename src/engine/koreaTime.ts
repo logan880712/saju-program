@@ -34,3 +34,5 @@ export function resolveKoreaTime(year:number,month:number,day:number,hour:number
  // 사주 일주/시주는 출생 당시 표준시를 사용하고 서머타임만 제거합니다.
  return {utc:new Date(chosen.utc),standard:new Date(wall-chosen.dst*60000),offsetMinutes:chosen.offset,dstMinutes:chosen.dst};
 }
+/** UTC instant to historical Korean standard time; daylight saving is removed. */
+export function koreanStandardAt(utc:number):number{const s=stateAt(utc);return utc+(s.offset-s.dst)*60000;}

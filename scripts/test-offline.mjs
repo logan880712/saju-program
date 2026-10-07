@@ -13,8 +13,8 @@ try{
   await page.setContent(await readFile(resolve(import.meta.dirname,'../downloads/saju-program.html'),'utf8'));
   await page.getByLabel('생년월일').fill('1988-07-12');await page.getByRole('button',{name:'사주 원국 계산하기'}).click();
   await page.getByRole('table').waitFor();assert.equal(await page.getByRole('columnheader').count(),5);
-  await page.getByText('구조화된 계산 데이터 (JSON)',{exact:true}).click();
-  const data=JSON.parse(await page.locator('pre').innerText());
+  await page.locator('#report-anchor').getByText('구조화된 계산 데이터 (JSON)',{exact:true}).click();
+  const data=JSON.parse(await page.locator('#report-anchor pre').innerText());
   assert.equal(data.solarDate,'1988-07-12');assert.equal(data.calculation.standardTime,'1988-07-12 11:00');
   assert.equal(data.pillars.length,4);assert.equal(data.calculation.dstCorrectionMinutes,60);
   const download=page.waitForEvent('download');await page.getByRole('button',{name:'JSON 저장'}).click();assert.equal((await download).suggestedFilename(),'saju-chart.json');
