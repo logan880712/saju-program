@@ -1,1 +1,21 @@
-<!doctype html><html lang="ko"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><meta name="theme-color" content="#183d35"/><title>사주정원 · 만세력</title></head><body><div id="root"></div><script type="module" src="/src/main.tsx"></script></body></html>
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<meta name="theme-color" content="#183d35"/>
+<title>사주정원 · 만세력</title>
+</head>
+<body>
+<div id="root"><section id="bootstrap-message" style="padding:32px;font-family:Arial,sans-serif;line-height:1.8;color:#243c34"><h1>사주정원</h1><p id="bootstrap-status">만세력을 불러오는 중입니다.</p><noscript>프로그램 실행을 위해 브라우저의 JavaScript를 켜주세요.</noscript></section></div>
+<script>
+(function(){
+ function showFailure(){var status=document.getElementById('bootstrap-status');if(status)status.textContent='프로그램을 불러오지 못했습니다. 주소를 Safari 또는 Chrome에서 직접 열고 새로고침해주세요. 계속 이 안내가 나오면 화면과 주소를 알려주세요.';}
+ window.addEventListener('error',showFailure);
+ window.addEventListener('unhandledrejection',showFailure);
+ setTimeout(showFailure,15000);
+})();
+</script>
+<script type="module" src="/src/main.tsx"></script>
+</body>
+</html>
