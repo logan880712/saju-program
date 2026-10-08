@@ -67,6 +67,10 @@ test('사람을 바꾸면 상담과 원국이 함께 초기화되고 새 자료�
  await expect(consultation).toContainText('새상담');
  await expect(consultation).not.toContainText('첫상담');
  await expect(consultation).not.toContainText('곶감');
+ const opening=consultation.locator('.opening-bubble>p').last();
+ await expect(opening).toContainText('일간');await expect(opening).toContainText('일진');
+ await consultation.getByRole('button',{name:'다음 이야기 듣기',exact:true}).click();
+ expect(await consultation.locator('.story-chapter>p').first().innerText()).not.toBe(await opening.innerText());
  await openFullReport(page);
  const download=page.waitForEvent('download');
  await page.getByRole('button',{name:'리포트 저장',exact:true}).click();
@@ -75,6 +79,16 @@ test('사람을 바꾸면 상담과 원국이 함께 초기화되고 새 자료�
  expect(report.natal.input.name).toBe('새상담');
  expect(report.natal.solarDate).toBe('1988-01-04');
  expect(report.interpretation.sections).toHaveLength(6);
+ expect(report.natal.pillars[2].ganji).toBe('戊午');
+ await expect(opening).toContainText('무토');
+ await expect(opening).toContainText(report.fortune.daily.stemTenGod);
+ await expect(opening).toContainText(report.fortune.daily.branchTenGod);
+ const openingText=await opening.innerText();
+ expect(report.interpretation.daily.paragraphs[0]).toBe(openingText);
+ await expect(page.getByRole('region',{name:'종합 사주 리포트'}).locator('.reading-card>p:not(.card-kicker)').first()).toHaveText(openingText);
+ const basis=consultation.getByRole('complementary',{name:'이번 풀이의 명리 근거'});
+ await expect(basis).toContainText('무토');await expect(basis).toContainText(report.fortune.daily.ganji);
+ await expect(basis).toContainText(report.fortune.daily.stemTenGod);await expect(basis).toContainText(report.fortune.daily.branchTenGod);
  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
 });
 

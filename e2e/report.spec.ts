@@ -15,5 +15,23 @@ test('모바일 종합 리포트: 풀이·대운·연운·월운·일진',async(
  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth)).toBe(true);expect(errors).toEqual([]);
 });
 test('성별 미선택은 대운 계산 보류, 다른 풀이 유지',async({page})=>{await create(page,'선택 안 함');await page.getByRole('button',{name:'대운',exact:true}).click();await expect(page.getByText('출생 정보에서 성별을 선택한 뒤 다시 계산하면',{exact:false})).toBeVisible();await expect(page.locator('.cycle')).toHaveCount(0);await page.getByRole('button',{name:'사주 풀이',exact:true}).click();await expect(page.getByRole('heading',{name:'직업 · 일하는 방식'})).toBeVisible();});
-test('기기 저장은 직접 선택하고 삭제할 수 있음',async({page})=>{await page.goto('/');await page.getByLabel('생년월일').fill('1988-07-12');await page.getByLabel('출생시간').fill('12:00');await page.getByLabel('이 기기에 출생정보 저장').check();await page.getByRole('button',{name:'할매에게 사주 이야기 듣기'}).click();await expect(page.getByRole('status')).toContainText('출생정보를 저장');await page.reload();await page.getByRole('button',{name:'저장한 정보 불러오기'}).click();await expect(page.getByLabel('생년월일')).toHaveValue('1988-07-12');await page.getByRole('button',{name:'저장 삭제',exact:true}).click();await page.reload();await page.getByRole('button',{name:'저장한 정보 불러오기'}).click();await expect(page.getByRole('status')).toContainText('없습니다');});
+test('기기 저장은 직접 선택하고 삭제할 수 있음',async({page})=>{await page.goto('/');await page.getByLabel('생년월일').fill('1988-07-12');await page.getByLabel('출생시간').fill('12:00');await page.getByLabel('이 기기에 출생정보 저장').check();await page.getByRole('button',{name:'할매에게 사주 이야기 듣기'}).click();await expect(page.getByRole('status')).toContainText('출생정보를 저장');await page.reload();await page.getByRole('button',{name:'저장한 정보 불러오기'}).click();await expect(page.getByLabel('생년월일')).toHaveValue('19880712');await page.getByRole('button',{name:'저장 삭제',exact:true}).click();await page.reload();await page.getByRole('button',{name:'저장한 정보 불러오기'}).click();await expect(page.getByRole('status')).toContainText('없습니다');});
 test('인쇄는 전체 리포트를 제공하고 입력정보 저장을 기본으로 켜지 않음',async({page})=>{await create(page);expect(await page.evaluate(()=>localStorage.getItem('saju-garden-birth-v1'))).toBeNull();await page.emulateMedia({media:'print'});await expect(page.locator('.input-panel')).toBeHidden();await expect(page.locator('.print-report')).toBeVisible();await expect(page.locator('.print-report').getByRole('heading',{name:'올해와 내년',exact:true})).toBeVisible();await expect(page.locator('.print-report .print-cycles>div')).toHaveCount(10);const pdf=await page.pdf({format:'A4'});expect(pdf.length).toBeGreaterThan(10000);await page.emulateMedia({media:'screen'});});
+
+test('미래 출생 원국의 출생 전 연운·월운·일진은 개인 운세를 붙이지 않음',async({page})=>{
+ await page.goto('/');await page.getByLabel('생년월일').fill('20301231');await page.getByLabel('출생시간').fill('12:00');
+ await page.getByRole('button',{name:'할매에게 사주 이야기 듣기',exact:true}).click();
+ await expect(page.getByRole('region',{name:'정원할매 상담'})).toBeVisible();await openFullReport(page);
+ const report=page.getByRole('region',{name:'종합 사주 리포트'}),guard=/출생 전|태어나기 전|출생일보다 앞|출생 이전/;
+ for(const label of ['올해 · 내년','월별 흐름','오늘의 운세']){
+  await report.getByRole('button',{name:label,exact:true}).click();
+  await expect(report.locator('.reading-card>p:not(.card-kicker)').first()).toContainText(guard);
+ }
+ const download=page.waitForEvent('download');await page.getByRole('button',{name:'리포트 저장',exact:true}).click();
+ const fs=await import('node:fs/promises'),data=JSON.parse(await fs.readFile((await (await download).path())!,'utf8'));
+ expect(data.natal.solarDate).toBe('2030-12-31');expect(data.fortune.referenceDate<'2030-12-31').toBe(true);
+ expect(data.interpretation.daily.paragraphs[0]).toMatch(guard);
+ for(const reading of data.interpretation.months)expect(reading.paragraphs[0]).toMatch(guard);
+ for(const reading of Object.values(data.interpretation.annual) as {paragraphs:string[]}[])expect(reading.paragraphs[0]).toMatch(guard);
+ expect(data.fortune.months).toHaveLength(12);expect(data.fortune.daily.ganji).toHaveLength(2);
+});

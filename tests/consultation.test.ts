@@ -23,7 +23,7 @@ describe('계산된 보고서만 읽는 상담 이야기',()=>{
       expect(story.chapters.length).toBeLessThanOrEqual(4);
       expect(story.actions.length).toBeGreaterThan(0);
       expect(story.evidence.length).toBeGreaterThan(0);
-      expect(story.notes.join(' ')).toContain('전통 해석 규칙');
+      expect(story.notes.join(' ')).toContain('전통 명리 해석');
     }
     expect(JSON.stringify(input)).toBe(before);
   });
@@ -41,20 +41,22 @@ describe('계산된 보고서만 읽는 상담 이야기',()=>{
     expect(input.fortune.profile.groups.재성.visible).toHaveLength(0);
     expect(input.fortune.profile.groups.식상.visible).toHaveLength(0);
     const story=buildConsultation(input,'wealth');
-    expect(mainText(story)).toContain('찬장');expect(mainText(story)).toContain('곶감');
-    expect(mainText(story)).toContain('태어난 날의 안쪽');
+    expect(mainText(story)).toContain('정재');expect(mainText(story)).toContain('식상');
+    expect(mainText(story)).toContain('일주 사화 속 지장간 경금');
     expect(story.evidence).toContain('일주 지장간 庚: 정재');
     expect(story.evidence).toContain('일주 지장간 戊: 상관');
     expect(story.evidence).toContain('시주 지장간 己: 식신');
     expect(mainText(story)).not.toContain('솜씨와 표현에 해당하는 글자는 겉과 속을 함께 살펴봐도 없어요');
   });
-  it('한자와 계산 전문어는 상담 본문에서 빼고 근거에 보존함',()=>{
+  it('일간·십성과 명리 용어는 실제 자료와 뜻을 함께 설명함',()=>{
     const input=report({gender:'여성'});
     for(const {id} of CONSULTATION_TOPICS) {
       const story=buildConsultation(input,id);
-      expect(mainText(story)).not.toMatch(/[\u3400-\u9fff]/);
-      expect(mainText(story)).not.toMatch(/십성|지장간|월지|일간|통근|천간|본기|신강|용신|합화/);
+      expect(story.opening).toContain('정화');
+      expect(mainText(story)).not.toMatch(/바깥 글자|안쪽의 중심 글자/);
     }
+    expect(mainText(buildConsultation(input,'nature'))).toContain('월령');
+    expect(mainText(buildConsultation(input,'nature'))).toContain('통근');
     expect(buildConsultation(input,'nature').evidence.join(' ')).toContain('丁');
   });
   it('같은 날짜도 다른 사람의 실제 개인 십성에 따라 오늘 이야기가 달라짐',()=>{
@@ -91,14 +93,15 @@ describe('계산된 보고서만 읽는 상담 이야기',()=>{
     const story=buildConsultation(report(),'cycles');
     expect(mainText(story)).toContain('성별이 선택되지');
     expect(mainText(story)).toContain('다시 계산');
-    expect(story.evidence).toEqual(['대운 상태: gender_required']);
-    expect(mainText(story)).not.toMatch(/순행|역행|\d번째 큰 흐름/);
+    expect(story.evidence).toContain('대운 상태: gender_required');
+    expect(story.chapters.map(c=>c.text).join(' ')).toContain('성별을 선택');
+    expect(mainText(story)).not.toMatch(/\d대운 구간/);
   });
   it('활성 대운은 엔진에서 계산된 구간만 현재 구간으로 읽음',()=>{
     const input=report({gender:'여성'}),active=input.fortune.cycles.periods.find(p=>p.active)!;
     expect(active).toBeDefined();
     const story=buildConsultation(input,'cycles');
-    expect(mainText(story)).toContain(`${active.index}번째 큰 흐름`);
+    expect(mainText(story)).toContain(`${active.index}대운 구간`);
     expect(mainText(story)).toContain(active.startDate.slice(0,10));
     expect(mainText(story)).toContain(active.endDate.slice(0,10));
     expect(story.evidence.join(' ')).toContain(`${active.index}대운 ${active.ganji}`);
@@ -114,12 +117,53 @@ describe('계산된 보고서만 읽는 상담 이야기',()=>{
   it('오행 표면에 없는 금도 실제 지장간에 있음을 설명함',()=>{
     const input=report();expect(input.natal.elementCounts.금).toBe(0);
     const story=buildConsultation(input,'elements');
-    expect(mainText(story)).toContain('금은 겉에 없지만');
+    expect(mainText(story)).toContain('금은 겉의 여덟 글자에는 없지만');
     expect(story.evidence).toContain('일주 지장간 庚: 금');
-    expect(story.notes.join(' ')).toContain('강도 점수가 아니');
+    expect(story.notes.join(' ')).toContain('강도 점수가 아닙니다');
   });
   it('동일한 입력으로 동일한 상담 결과를 생성함',()=>{
     const input=report();expect(buildConsultation(input,'relationship')).toEqual(buildConsultation(input,'relationship'));
+  });
+  it('2026-10-08 정화 일간은 을묘일 편인·편인으로 풀고 실제 자묘형·묘오파를 명시함',()=>{
+    const input=report({gender:'여성'},'2026-10-08'),story=buildConsultation(input,'daily');
+    expect(input.fortune.daily.ganji).toBe('乙卯');
+    expect(story.opening).toContain('정화 일간');
+    expect(story.opening).toContain('을묘일');
+    expect(story.opening).toContain('편인·편인');
+    expect(story.opening).toContain('탐구와 다른 관점의 배움');
+    expect(story.chapters[0].text).toContain('월주 임자와 일진 을묘 사이에 자묘형');
+    expect(story.chapters[0].text).toContain('시주 병오와 일진 을묘 사이에 묘오파');
+    expect(mainText(story)).toContain('병진 대운(겁재·상관)');
+    expect(mainText(story)).toContain('병오 세운(겁재·비견)');
+    // 한로 절입은 당일 15:29 이후이므로 정오 배경은 백로 정유월.
+    expect(mainText(story)).toContain('정유 월운(비견·편재)');
+  });
+  it('같은 정화도 다른 월주에 있으면 오늘 원국 관계의 설명이 달라짐',()=>{
+    const winter=buildConsultation(report({},'2026-10-08'),'daily');
+    const spring=buildConsultation(report({date:'1988-03-03'},'2026-10-08'),'daily');
+    expect(winter.chapters[0].text).toContain('자묘형');
+    expect(spring.chapters[0].text).not.toContain('자묘형');
+    expect(winter.chapters[0].text).not.toEqual(spring.chapters[0].text);
+  });
+  it('첫 문장은 일간을 보여주고 첫 상세 설명에서 같은 비유 문장을 반복하지 않음',()=>{
+    const input=report({gender:'여성'},'2026-10-08');
+    for(const {id} of CONSULTATION_TOPICS) {
+      const story=buildConsultation(input,id),sentences=story.opening.split(/[.!?]/).map(s=>s.trim()).filter(Boolean);
+      expect(story.opening).toContain('정화');
+      expect(sentences.length).toBeLessThanOrEqual(3);
+      for(const sentence of sentences.filter(s=>s.length>30))expect(story.chapters[0].text).not.toContain(sentence);
+    }
+  });
+  it('연운 선택이 2030년이어도 오늘의 배경은 실제 2026년 날짜이며 연운은 선택연도 기준임',()=>{
+    const input=report({gender:'여성'},'2026-10-08',2030);
+    const today=buildConsultation(input,'daily'),annual=buildConsultation(input,'annual');
+    expect(mainText(today)).toContain('병오 세운');
+    expect(mainText(today)).toContain('정유 월운');
+    expect(mainText(today)).not.toContain('2030년');
+    expect(annual.title).toContain('2030년');
+    expect(annual.chapters[3].text).toContain('2030년 7월 기준');
+    expect(mainText(annual)).not.toContain('올해');
+    expect(annual.opening).toContain(input.fortune.annual[0].stem.korean+input.fortune.annual[0].branch.korean);
   });
 });
 

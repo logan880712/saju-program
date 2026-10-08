@@ -10,6 +10,7 @@ import {DailyHub} from './ui/DailyHub';
 import {Grandma,GrandmaWelcome} from './ui/Grandma';
 import {Consultation} from './ui/Consultation';
 import {PrintReport} from './ui/PrintReport';
+import {BirthDate} from './ui/BirthDate';
 import './style.css';
 import './consultation.css';
 const initial:BirthInput={name:'',gender:'선택 안 함',calendar:'solar',date:'',time:'',region:'서울',leapMonth:false};
@@ -17,6 +18,7 @@ const storageKey='saju-garden-birth-v1';
 function buildReport(natal:SajuResult,year:number,date:string):FullReport{const fortune=calculateFortune(natal,year,date);return {schemaVersion:'2.0',natal,fortune,interpretation:interpretReport(natal,fortune)};}
 function saveFile(data:unknown,name:string){const url=URL.createObjectURL(new Blob([JSON.stringify(data,null,2)],{type:'application/json'}));const a=document.createElement('a');a.href=url;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);}
 function App(){
+ const [birthDateReset,setBirthDateReset]=useState(0);
  const [input,setInput]=useState(initial),[report,setReport]=useState<FullReport|null>(null),[error,setError]=useState(''),[remember,setRemember]=useState(false),[notice,setNotice]=useState(''),[busy,setBusy]=useState(false),[reportOpen,setReportOpen]=useState(false),[appSection,setAppSection]=useState('consult'),[entryTopic,setEntryTopic]=useState<'nature'|'daily'>(()=>new URLSearchParams(window.location.search).get('view')==='today'?'daily':'nature'),[reportTab,setReportTab]=useState<string>(()=>new URLSearchParams(window.location.search).get('view')==='today'?'daily':'summary');
  const today=seoulToday(),thisYear=Number(today.slice(0,4));
  const set=<K extends keyof BirthInput>(key:K,value:BirthInput[K])=>{setInput(p=>({...p,[key]:value}));setReport(null);setError('');setNotice('');};
@@ -26,8 +28,8 @@ function App(){
   if(window.innerWidth<700)setTimeout(()=>document.getElementById('report-anchor')?.scrollIntoView({behavior:window.matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth',block:'start'}),50);
  }catch(e){setReport(null);setError(e instanceof Error?e.message:'계산에 실패했습니다.');}finally{setBusy(false);}}
  function openPersonalDaily(){setReportTab('daily');setEntryTopic('daily');setAppSection('daily');setError('');if(input.date&&input.time){try{setReport(buildReport(calculateSaju(input),thisYear,today));setReportOpen(false);setAppSection('daily');setTimeout(()=>document.getElementById('report-anchor')?.scrollIntoView({behavior:'smooth',block:'start'}),50);return;}catch(e){setError(e instanceof Error?e.message:'출생정보를 확인해주세요.');}}setNotice('오늘의 운세를 볼 분의 출생정보를 입력해주세요. 성별을 선택하지 않아도 오늘 운세를 볼 수 있어요.');document.getElementById('birth-panel')?.scrollIntoView({behavior:'smooth',block:'start'});}
- function newPerson(){setInput(initial);setReportOpen(false);setAppSection('profile');setTimeout(()=>document.getElementById('birth-panel')?.scrollIntoView({behavior:'smooth',block:'start'}),30);setReport(null);setReportTab('daily');setRemember(false);setError('');setNotice('다른 분의 출생정보를 입력하고 오늘 운세를 확인해보세요.');}
- function restore(){try{const saved=localStorage.getItem(storageKey);if(!saved){setNotice('이 기기에 저장한 출생정보가 없습니다.');return;}const parsed=JSON.parse(saved);calculateSaju(parsed);setInput(parsed);setReport(null);setError('');setNotice('저장한 정보를 불러왔습니다. 출생정보를 확인한 뒤 계산해주세요.');}catch{setNotice('저장한 정보를 읽을 수 없습니다. 직접 입력해주세요.');}}
+ function newPerson(){setInput(initial);setBirthDateReset(n=>n+1);setReportOpen(false);setAppSection('profile');setTimeout(()=>document.getElementById('birth-panel')?.scrollIntoView({behavior:'smooth',block:'start'}),30);setReport(null);setReportTab('daily');setRemember(false);setError('');setNotice('다른 분의 출생정보를 입력하고 오늘 운세를 확인해보세요.');}
+ function restore(){try{const saved=localStorage.getItem(storageKey);if(!saved){setNotice('이 기기에 저장한 출생정보가 없습니다.');return;}const parsed=JSON.parse(saved);calculateSaju(parsed);setInput(parsed);setBirthDateReset(n=>n+1);setReport(null);setError('');setNotice('저장한 정보를 불러왔습니다. 출생정보를 확인한 뒤 계산해주세요.');}catch{setNotice('저장한 정보를 읽을 수 없습니다. 직접 입력해주세요.');}}
  function erase(){try{localStorage.removeItem(storageKey);setRemember(false);setNotice('이 기기에 저장한 출생정보를 삭제했습니다.');}catch{setNotice('이 브라우저에서는 저장 정보에 접근할 수 없습니다.');}}
  function changeYear(year:number){if(!report)return;try{setReport(buildReport(report.natal,year,today));setError('');}catch(e){setError(e instanceof Error?e.message:'연운 계산에 실패했습니다.');}}
  function goTo(section:string){setAppSection(section);if(section==='daily'){openPersonalDaily();return;}if(section==='chart'){if(!report){setNotice('먼저 출생정보를 입력하면 원국을 함께 보여드릴게요.');document.getElementById('birth-panel')?.scrollIntoView({behavior:'smooth',block:'start'});return;}setReportTab('summary');setReportOpen(true);setTimeout(()=>document.getElementById('full-report')?.scrollIntoView({behavior:'smooth',block:'start'}),50);return;}document.getElementById(section==='profile'?'birth-panel':report?'consultation':'birth-panel')?.scrollIntoView({behavior:'smooth',block:'start'});}
@@ -42,7 +44,7 @@ function App(){
  <label>성별<select aria-label="성별" value={input.gender} onChange={e=>set('gender',e.target.value as BirthInput['gender'])}><option>선택 안 함</option><option>남성</option><option>여성</option></select></label><p className="field-note">전통 대운 방향을 계산할 때 사용합니다.</p>
  <fieldset><legend>달력 기준</legend><div className="calendar-choice">{(['solar','lunar'] as const).map(c=><label key={c} className={input.calendar===c?'selected':''}><input type="radio" name="calendar" checked={input.calendar===c} onChange={()=>{setInput(p=>({...p,calendar:c,leapMonth:false}));setReport(null);setError('');}}/>{c==='solar'?'양력':'음력'}</label>)}</div></fieldset>
  {input.calendar==='lunar'&&<label className="checkbox"><input type="checkbox" checked={input.leapMonth} onChange={e=>set('leapMonth',e.target.checked)}/> 윤달에 태어났어요</label>}
- <label>생년월일 {input.calendar==='lunar'&&<span className="optional">음력 숫자 그대로 입력</span>}<input type="date" required min="1949-01-01" max="2030-12-31" value={input.date} onChange={e=>set('date',e.target.value)}/></label>
+ <BirthDate key={birthDateReset} value={input.date} onChange={value=>set('date',value)} lunar={input.calendar==='lunar'}/>
  <div className="two-fields"><label>출생시간<input type="time" required value={input.time} onChange={e=>set('time',e.target.value)}/></label><label>출생지역<select aria-label="출생지역" value={input.region} onChange={e=>set('region',e.target.value)}>{REGIONS.map(r=><option key={r}>{r}</option>)}</select></label></div>
  <p className="help">출생기록의 당시 시계 시각을 입력하세요. 서머타임을 자동 보정합니다. 출생시간을 모르면 시주를 임의로 만들지 않습니다. 확인한 출생시간을 직접 입력해주세요.</p>
  <label className="checkbox remember"><input type="checkbox" checked={remember} onChange={e=>setRemember(e.target.checked)}/> 이 기기에 출생정보 저장</label>

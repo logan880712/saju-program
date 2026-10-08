@@ -2,7 +2,8 @@ import {describe,it,expect} from 'vitest';
 import {calculateSaju} from '../src/engine/calculate';
 import {calculateFortune,seoulToday} from '../src/engine/fortune';
 import {pairRelations} from '../src/engine/relations';
-import {interpretReport} from '../src/interpretation/readings';
+import {interpretReport,luckReading} from '../src/interpretation/readings';
+import {buildConsultation} from '../src/interpretation/consultation';
 import type {BirthInput} from '../src/engine/types';
 const input:BirthInput={name:'검증',gender:'남성',calendar:'solar',date:'1988-07-12',time:'12:00',region:'서울',leapMonth:false};
 const run=(patch:Partial<BirthInput>={})=>calculateFortune(calculateSaju({...input,...patch}),2026,'2026-10-07');
@@ -36,4 +37,59 @@ describe('쌍별 관계와 규칙 기반 해석의 데이터 계약',()=>{
  it('성향·재물·직업·관계·변화·오행 6개, 운마다 실제 근거 포함',()=>{const natal=calculateSaju(input),f=run(),r=interpretReport(natal,f);expect(r.sections.map(s=>s.id)).toEqual(['nature','wealth','career','relationship','change','elements']);expect(r.annual[2026].evidence).toContain('운 간지 丙午');expect(r.months).toHaveLength(12);expect(r.cycles).toHaveLength(10);expect(r.daily.evidence).toContain(`운 간지 ${f.daily.ganji}`);expect(r.method).toBe('traditional-rules-v2');});
  it('두 사람의 일간이 다르면 성향 풀이도 달라짐',()=>{const a=calculateSaju(input),b=calculateSaju({...input,date:'1988-07-13'});expect(interpretReport(a,run()).sections[0].title).not.toBe(interpretReport(b,run({date:'1988-07-13'})).sections[0].title);});
  it('풀이가 원국을 변경하지 않으며 같은 데이터의 결과는 동일',()=>{const n=calculateSaju(input),f=run(),before=JSON.stringify({n,f});const a=interpretReport(n,f);expect(interpretReport(n,f)).toEqual(a);expect(JSON.stringify({n,f})).toBe(before);expect(JSON.parse(JSON.stringify(a))).toEqual(a);});
+ it('종합·인쇄·JSON의 원국/오늘 본문은 같은 계산 자료의 상담을 사용하고 기존 근거를 보존함',()=>{
+  const natal=calculateSaju({...input,date:'1988-01-03',gender:'여성'}),fortune=calculateFortune(natal,2026,'2026-10-08');
+  const before=JSON.stringify({natal,fortune}),r=interpretReport(natal,fortune),story=buildConsultation({natal,fortune},'daily');
+  expect(r.daily.paragraphs).toEqual([story.opening,...story.chapters.map(c=>c.text),story.takeaway]);
+  expect(r.daily.evidence).toContain(`운 간지 ${fortune.daily.ganji}`);
+  expect(r.daily.evidence.join(' ')).toContain('자묘형');
+  expect(r.daily.paragraphs.join(' ')).toContain('편인·편인');
+  expect(r.sections.find(s=>s.id==='wealth')!.paragraphs[0]).toBe(buildConsultation({natal,fortune},'wealth').opening);
+  expect(r.sections.find(s=>s.id==='wealth')!.evidence).toContain('일주 지장간 庚: 정재');
+  expect(JSON.stringify({natal,fortune})).toBe(before);
+ });
+ it('2030년 연운의 전체 리포트는 선택 연도와 해당 연도의 대운을 상담과 일치시킴',()=>{
+  const natal=calculateSaju(input),fortune=calculateFortune(natal,2030,'2026-10-08'),r=interpretReport(natal,fortune);
+  const story=buildConsultation({natal,fortune},'annual');
+  expect(r.annual[2030].paragraphs[0]).toBe(story.opening);
+  expect(r.annual[2030].paragraphs.join(' ')).toContain('2030년 7월 기준');
+  expect(r.annual[2030].paragraphs.join(' ')).not.toContain('올해');
+  expect(r.annual[2031].paragraphs[0]).toBe(buildConsultation({natal,fortune},'nextYear').opening);
+  expect(r.daily.paragraphs.join(' ')).toContain('2026-10-08');
+  expect(r.daily.paragraphs.join(' ')).not.toContain('2030년');
+ });
+ it('2030년 미래 출생으로 조회한 2026년 월운은 달력 자료만 보존하고 개인 운세를 붙이지 않음',()=>{
+  const natal=calculateSaju({...input,date:'2030-06-02'}),fortune=calculateFortune(natal,2026,'2026-10-08'),before=JSON.stringify({natal,fortune}),r=interpretReport(natal,fortune);
+  for(const [index,section] of r.months.entries()){
+   expect(section.paragraphs.join(' ')).toContain('출생 전 기간');
+   expect(section.paragraphs.join(' ')).toContain('개인 운세를 붙이지 않고');
+   expect(section.paragraphs.join(' ')).not.toContain('에 초점을 두고 읽는 흐름');
+   expect(section.evidence).toContain(`운 간지 ${fortune.months[index].ganji}`);
+   expect(section.id).toBe(`month-${index}`);
+  }
+  for(const id of ['wealth','career','relationship']){
+   const section=r.sections.find(s=>s.id===id)!;
+   expect(section.paragraphs.join(' ')).toContain('개인화된 배경으로 붙이지 않고');
+   expect(section.paragraphs.join(' ')).not.toContain('2026-10-08 정오 기준 배경은');
+  }
+  expect(JSON.stringify({natal,fortune})).toBe(before);
+ });
+ it('출생 시각을 걸친 월운은 그 시각 이후의 부분만 참고한다고 명시함',()=>{
+  const natal=calculateSaju({...input,date:'2030-02-15'}),fortune=calculateFortune(natal,2030,'2030-03-01'),r=interpretReport(natal,fortune);
+  expect(fortune.months[0].startDate<`${natal.calculation.standardTime}:00`).toBe(true);
+  expect(r.months[0].paragraphs[0]).toContain('출생 시각을 걸쳐');
+  expect(r.months[0].paragraphs[0]).toContain('2030-02-15 12:00:00부터');
+  expect(r.months[0].paragraphs[0]).toContain(`${fortune.months[0].endDate} 전까지`);
+  expect(r.months[0].paragraphs[1]).toContain('에 초점을 두고 읽는 흐름');
+  expect(r.months[1].paragraphs[0]).not.toContain('출생 시각을 걸쳐');
+ });
+ it('종료가 출생 시각과 같으면 출생 전이고 정상 성인의 월운·선택 대운은 기존 풀이를 유지함',()=>{
+  const natal=calculateSaju(input),fortune=run(),birth=`${natal.calculation.standardTime}:00`;
+  const before=luckReading({...fortune.months[0],startDate:'1988-07-11 12:00:00',endDate:birth},'test','검증','검증',natal);
+  expect(before.paragraphs[0]).toContain('출생 전 기간');
+  const r=interpretReport(natal,fortune);
+  expect(r.months[0].paragraphs[0]).toContain('에 초점을 두고 읽는 흐름');
+  expect(r.cycles[0].paragraphs[0]).toContain('에 초점을 두고 읽는 흐름');
+  expect(r.months[0].paragraphs.join(' ')).not.toContain('출생 전 기간');
+ });
 });

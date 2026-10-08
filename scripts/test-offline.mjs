@@ -11,7 +11,7 @@ try{
   // The managed cloud browser blocks file:// navigation. Load the exact HTML bytes
   // into an offline blank page instead, without any HTTP server or external assets.
   await page.setContent(await readFile(resolve(import.meta.dirname,'../downloads/saju-program.html'),'utf8'));
-  await page.getByLabel('생년월일').fill('1988-07-12');await page.getByLabel('출생시간').fill('12:00');await page.getByRole('button',{name:'할매에게 사주 이야기 듣기'}).click();
+  await page.getByLabel('생년월일').fill('19880712');await page.getByLabel('출생시간').fill('12:00');await page.getByRole('button',{name:'할매에게 사주 이야기 듣기'}).click();
   const consultation=page.getByRole('region',{name:'정원할매 상담'});
   await consultation.waitFor();
   await consultation.getByRole('button',{name:'돈과 재물 이야기',exact:true}).click();

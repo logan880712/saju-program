@@ -24,15 +24,26 @@ export function calculateFortune(natal:SajuResult,year:number,referenceDate=seou
  const relations=(ganji:string,label:string)=>natal.pillars.flatMap(p=>pairRelations(p.ganji,ganji,p.label,label));
  const table=(y:number)=>Solar.fromYmdHms(y,7,1,12,0,0).getLunar().getJieQiTable();
  const termAt=(y:number,key:string)=>{const s=table(y)[key];if(!s||s.getYear()!==y)throw new Error('절기 자료를 찾을 수 없습니다.');return timestamp(s);};
- const annual:AnnualLuck[]=[year,year+1].map(y=>{
+ const annualFor=(y:number):AnnualLuck=>{
   const ganji=Solar.fromYmdHms(y,7,1,12,0,0).getLunar().getEightChar().getYear();
   return {...luckPillar(ganji,dayStem),year:y,startDate:text(koreanStandardAt(termAt(y,'立春')-8*3600000)),endDate:text(koreanStandardAt(termAt(y+1,'立春')-8*3600000)),relations:relations(ganji,`${y}년`),cycleRelations:[]};
- });
- const starts=termNames.map((name,i)=>termAt(i===11?year+1:year,name));starts.push(termAt(year+1,'立春'));
- const months:MonthLuck[]=starts.slice(0,12).map((start,i)=>{
+ };
+ const annual:AnnualLuck[]=[year,year+1].map(annualFor);
+ const monthsFor=(solarYear:number):MonthLuck[]=>{
+ const starts=termNames.map((name,i)=>termAt(i===11?solarYear+1:solarYear,name));starts.push(termAt(solarYear+1,'立春'));
+ return starts.slice(0,12).map((start,i)=>{
   const ganji=fromDate(new Date(start+60000)).getLunar().getEightChar().getMonth();
   return {...luckPillar(ganji,dayStem),index:i,term:termKorean[i],startDate:text(koreanStandardAt(start-8*3600000)),endDate:text(koreanStandardAt(starts[i+1]-8*3600000)),relations:relations(ganji,`${termKorean[i]} 월운`)};
  });
+ };
+ const months=monthsFor(year);
+ // A selected report year is independent of the actual solar year/month at the reference date.
+ // Use Korean standard noon (no daylight-saving clock shift), the same basis as the daily report.
+ const at=`${referenceDate} 12:00:00`;
+ let currentYear=ry,currentAnnual=annualFor(ry);
+ if(at<currentAnnual.startDate){currentYear--;currentAnnual=annualFor(currentYear);}
+ const currentMonth=monthsFor(currentYear).find(p=>at>=p.startDate&&at<p.endDate);
+ if(!currentMonth)throw new Error('조회 날짜의 절기 월 구간을 찾을 수 없습니다.');
  // Daily lookup is the civil day's noon: 23:00 boundary is documented separately.
  const dailyChar=Solar.fromYmdHms(ry,rm,rd,12,0,0).getLunar().getEightChar();dailyChar.setSect(1);
  const dailyGanji=dailyChar.getDay();
@@ -51,8 +62,8 @@ export function calculateFortune(natal:SajuResult,year:number,referenceDate=seou
   });
   cycles={status:'calculated',direction:yun.isForward()?'순행':'역행',startAge:{years:yun.getStartYear(),months:yun.getStartMonth(),days:yun.getStartDay(),hours:yun.getStartHour()},startDate:periods[0].startDate,periods,note:'양남·음녀 순행 / 음남·양녀 역행. 인접 절까지의 차이를 3일=1년으로 환산하는 분 단위 기산법(sect 2)입니다. 시작일은 엔진 기산값을 서머타임을 제거한 역사적 한국 표준시로 표시한 값이며 학파별 기산법·반올림에 따라 달라질 수 있습니다. 나이는 대운 개시까지의 경과연수를 약식 표시합니다.'};
  }
- annual.forEach(a=>{const midpoint=`${a.year}-07-01 12:00:00`;const cycle=cycles.periods.find(p=>midpoint>=p.startDate&&midpoint<p.endDate);if(cycle)a.cycleRelations=pairRelations(cycle.ganji,a.ganji,`${a.year}년 7월 기준 대운`,`${a.year}년`);});
- return {profile:calculateNatalProfile(natal),referenceDate,referenceYear:year,cycles,annual,months,daily:{...luckPillar(dailyGanji,dayStem),date:referenceDate,relations:relations(dailyGanji,'일진')},natalRelations:natalRelations(natal.pillars),methods:['연운은 양력 1월 1일이 아닌 입춘부터 다음 입춘까지입니다.','월운은 12절의 실제 절입 시각으로 구분하며 음력 월·달력 월과 다릅니다.','일진은 선택 날짜의 한국 표준시 정오 기준입니다. 23시 이후는 다음 일진으로 봅니다.','합·충·형·파·해는 쌍별 배속을 표시합니다. 합화·삼합·삼형 완성 및 길흉의 강도는 판정하지 않습니다.','대운 시작 전 또는 10개 대운 범위 밖에는 현재 대운을 표시하지 않습니다.']};
+ [...annual,currentAnnual].forEach(a=>{const midpoint=`${a.year}-07-01 12:00:00`;const cycle=cycles.periods.find(p=>midpoint>=p.startDate&&midpoint<p.endDate);if(cycle)a.cycleRelations=pairRelations(cycle.ganji,a.ganji,`${a.year}년 7월 기준 대운`,`${a.year}년`);});
+ return {profile:calculateNatalProfile(natal),referenceDate,referenceYear:year,calendar:{at,annual:currentAnnual,month:currentMonth},cycles,annual,months,daily:{...luckPillar(dailyGanji,dayStem),date:referenceDate,relations:relations(dailyGanji,'일진')},natalRelations:natalRelations(natal.pillars),methods:['연운은 양력 1월 1일이 아닌 입춘부터 다음 입춘까지입니다.','월운은 12절의 실제 절입 시각으로 구분하며 음력 월·달력 월과 다릅니다.','일진과 현재 절기 연·월은 선택 날짜의 한국 표준시 정오 기준입니다. 23시 이후는 다음 일진으로 봅니다.','합·충·형·파·해는 쌍별 배속을 표시합니다. 합화·삼합·삼형 완성 및 길흉의 강도는 판정하지 않습니다.','대운 시작 전 또는 10개 대운 범위 밖에는 현재 대운을 표시하지 않습니다.']};
 }
 /** Common calendar day only: no invented personal ten-gods without a birth chart. */
 export function calculateCalendarDay(date=seoulToday()){
